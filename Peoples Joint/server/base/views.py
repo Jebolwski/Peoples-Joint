@@ -10,6 +10,9 @@ from django.utils.text import slugify
 from django.contrib.auth.hashers import make_password
 from rest_framework import generics
 from django.contrib.auth import authenticate
+from django.core.mail import send_mail
+import jwt
+
 
 class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
     @classmethod
@@ -75,7 +78,6 @@ def Register(request):
         return Response({"msg":serializer.data},status=200)
     else:
         return Response({"msg":"Data is not valid. 😥"},status=400)
-
 
 #!GET A SPECIFIC BLOG BY ID
 @api_view(['GET'])
@@ -223,4 +225,26 @@ def ChangePassword(request):
         return Response({"msg":"Changed your password. 👍"},status=200)
 @api_view(['POST'])
 def ResetPasswordMail(request):
-    return Response("messi")
+    email = request.data.get("mail")
+    lang = request.data.get("language")
+    user = User.objects.get(email=email)
+    if len(User.objects.filter(email=email))>0:
+        jwt_code = jwt.encode(payload={"user_id":user.id,"username":user.username},key="alow31%4!")
+        print(jwt_code)
+        link = "http://localhost:3000/reset-password/"+jwt_code
+        send_mail(
+            'Reset your password 🤨',
+            'Reset password at '+link,
+            'info@peoplesjoint.com',
+            [email],
+            fail_silently=False,
+        )
+        if lang=="tr":
+            return Response({"msg":"Email başarıyla gönderildi. 😄"},status=200)
+        else:
+            return Response({"msg":"Successfully sent mail. 😄"},status=200)
+    else:
+        if lang=="tr":
+            return Response({"msg":str(email)+" emailiyle kayıt olmuş kullanıcı yok. 😒"},status=400)
+        else:
+            return Response({"msg":"There is no user saved with email "+str(email)+". 😒"},status=400)
