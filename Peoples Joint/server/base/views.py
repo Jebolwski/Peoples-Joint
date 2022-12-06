@@ -223,6 +223,8 @@ def ChangePassword(request):
         return Response({"msg":"Şifreniz değiştirildi. 👍"},status=200)
     else:
         return Response({"msg":"Changed your password. 👍"},status=200)
+
+
 @api_view(['POST'])
 def ResetPasswordMail(request):
     email = request.data.get("mail")
@@ -231,10 +233,12 @@ def ResetPasswordMail(request):
     if len(User.objects.filter(email=email))>0:
         jwt_code = jwt.encode(payload={"user_id":user.id,"username":user.username},key="alow31%4!")
         print(jwt_code)
+        from django.template.loader import render_to_string
         link = "http://localhost:3000/reset-password/"+jwt_code
+        template = render_to_string("base/email_reset.html",{"lang":lang,"link":link})
         send_mail(
             'Reset your password 🤨',
-            'Reset password at '+link,
+            template,
             'info@peoplesjoint.com',
             [email],
             fail_silently=False,
@@ -248,3 +252,33 @@ def ResetPasswordMail(request):
             return Response({"msg":str(email)+" emailiyle kayıt olmuş kullanıcı yok. 😒"},status=400)
         else:
             return Response({"msg":"There is no user saved with email "+str(email)+". 😒"},status=400)
+
+@api_view(['POST'])
+def ResetPassword(request,code):
+    kod = jwt.decode(code,key="alow31%4!",algorithms=['HS256'],options={"verify_signature": True})
+    id = kod.get("user_id")
+
+    lang = request.data.get("lang")
+    
+    password1 = request.data.get("p_1")
+    password2 = request.data.get("p_2")
+    if password1 != password2:
+        if lang=="tr":
+            return Response({"msg":"Şifreler birbiriyle uyuşmuyor. 😒"},status=400)
+        else:
+            return Response({"msg":"Passwords dont match. 😒"},status=400)
+    profile = Profile.objects.get(user=User.objects.get(id=id))
+    if profile:
+        profile.user.set_password(password1)
+        profile.user.save()
+        profile.save()
+        if lang=="tr":
+            return Response({"msg":"Şifre başarıyla değiştirildi. 😄"},status=200)
+        else:
+            return Response({"msg":"Password succesfully changed. 😄"},status=200)
+
+
+    
+    return Response({"msg":"Passwords dont match. 😒"},status=400)
+    
+    

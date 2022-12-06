@@ -32,6 +32,7 @@ urlpatterns = [
     #?AUTHs
     path('change-password', views.ChangePassword),
     path('reset-password-email', views.ResetPasswordMail),
+    path('reset-password/<str:code>', views.ResetPassword),
 
 
     
