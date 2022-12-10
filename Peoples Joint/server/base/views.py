@@ -12,6 +12,7 @@ from rest_framework import generics
 from django.contrib.auth import authenticate
 from django.core.mail import send_mail
 import jwt
+from datetime import datetime,timezone,timedelta
 
 
 class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
@@ -231,7 +232,7 @@ def ResetPasswordMail(request):
     lang = request.data.get("language")
     user = User.objects.get(email=email)
     if len(User.objects.filter(email=email))>0:
-        jwt_code = jwt.encode(payload={"user_id":user.id,"username":user.username},key="alow31%4!")
+        jwt_code = jwt.encode(payload={"user_id":user.id,"username":user.username,'exp':datetime.now(timezone.utc)+timedelta(minutes=5)},key="alow31%4!")
         print(jwt_code)
         from django.template.loader import render_to_string
         link = "http://localhost:3000/reset-password/"+jwt_code
@@ -255,30 +256,47 @@ def ResetPasswordMail(request):
 
 @api_view(['POST'])
 def ResetPassword(request,code):
-    kod = jwt.decode(code,key="alow31%4!",algorithms=['HS256'],options={"verify_signature": True})
-    id = kod.get("user_id")
-
-    lang = request.data.get("lang")
-    
-    password1 = request.data.get("p_1")
-    password2 = request.data.get("p_2")
-    if password1 != password2:
-        if lang=="tr":
-            return Response({"msg":"Şifreler birbiriyle uyuşmuyor. 😒"},status=400)
+    lang = request.data.get('lang')
+    try:
+        kod = jwt.decode(code,key="alow31%4!",algorithms=['HS256'],options={"verify_signature": True})
+        
+        id = kod.get("user_id")
+        lang = request.data.get("lang")
+        
+        password1 = request.data.get("p_1")
+        password2 = request.data.get("p_2")
+        
+        if password1 != password2:
+            if lang=="tr":
+                return Response({"msg":"Şifreler birbiriyle uyuşmuyor. 😒"},status=400)
+            else:
+                return Response({"msg":"Passwords dont match. 😒"},status=400)
+        
+        profile = Profile.objects.get(user=User.objects.get(id=id))
+        
+        if profile:
+            profile.user.set_password(password1)
+            profile.user.save()
+            profile.save()
+            if lang=="tr":
+                return Response({"msg":"Şifre başarıyla değiştirildi. 😄"},status=200)
+            else:
+                return Response({"msg":"Password succesfully changed. 😄"},status=200)
         else:
-            return Response({"msg":"Passwords dont match. 😒"},status=400)
-    profile = Profile.objects.get(user=User.objects.get(id=id))
-    if profile:
-        profile.user.set_password(password1)
-        profile.user.save()
-        profile.save()
+            if lang=="tr":
+                return Response({"msg":"Kullanıcı bulunamadı. 🤔"},status=400)
+            else:
+                return Response({"msg":"Couldn't find user. 🤔"},status=400)
+
+        
+    except:
         if lang=="tr":
-            return Response({"msg":"Şifre başarıyla değiştirildi. 😄"},status=200)
+            return Response({"msg":"Şifre şu an değiştirilemiyor. 😒"},status=400)
         else:
-            return Response({"msg":"Password succesfully changed. 😄"},status=200)
+            return Response({"msg":"Can't change password now. 😒"},status=400)
+    
 
 
     
-    return Response({"msg":"Passwords dont match. 😒"},status=400)
     
     
