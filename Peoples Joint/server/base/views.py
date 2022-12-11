@@ -225,7 +225,6 @@ def ChangePassword(request):
     else:
         return Response({"msg":"Changed your password. 👍"},status=200)
 
-
 @api_view(['POST'])
 def ResetPasswordMail(request):
     email = request.data.get("mail")
@@ -233,17 +232,25 @@ def ResetPasswordMail(request):
     user = User.objects.get(email=email)
     if len(User.objects.filter(email=email))>0:
         jwt_code = jwt.encode(payload={"user_id":user.id,"username":user.username,'exp':datetime.now(timezone.utc)+timedelta(minutes=5)},key="alow31%4!")
-        print(jwt_code)
         from django.template.loader import render_to_string
-        link = "http://localhost:3000/reset-password/"+jwt_code
+        link = "http://localhost:3000/reset-password/"+jwt_code+get_random_string(4).upper()
         template = render_to_string("base/email_reset.html",{"lang":lang,"link":link})
-        send_mail(
-            'Reset your password 🤨',
-            template,
-            'info@peoplesjoint.com',
-            [email],
-            fail_silently=False,
-        )
+        if lang == "en":
+            send_mail(
+                'Reset your password 🤨',
+                template,
+                'info@peoplesjoint.com',
+                [email],
+                fail_silently=False,
+            )
+        else:
+            send_mail(
+                'Şifreni sıfırla 🤨',
+                template,
+                'info@peoplesjoint.com',
+                [email],
+                fail_silently=False,
+            )
         if lang=="tr":
             return Response({"msg":"Email başarıyla gönderildi. 😄"},status=200)
         else:
@@ -258,6 +265,7 @@ def ResetPasswordMail(request):
 def ResetPassword(request,code):
     lang = request.data.get('lang')
     try:
+        code = code[:len(code)-4]
         kod = jwt.decode(code,key="alow31%4!",algorithms=['HS256'],options={"verify_signature": True})
         
         id = kod.get("user_id")
@@ -294,9 +302,94 @@ def ResetPassword(request,code):
             return Response({"msg":"Şifre şu an değiştirilemiyor. 😒"},status=400)
         else:
             return Response({"msg":"Can't change password now. 😒"},status=400)
-    
 
+@api_view(['POST'])
+def ChangeMailSendMail(request):
+    lang = request.data.get('lang')
+    if len(User.objects.filter(id=request.data.get('id')))>0:
+        user = User.objects.get(id=request.data.get("id"))
+        jwt_code = jwt.encode(payload={"user_id":user.id,"username":user.username,'exp':datetime.now(timezone.utc)+timedelta(minutes=5)},key="alow31%4!")
+        from django.template.loader import render_to_string
+        link = "http://localhost:3000/change-email/"+jwt_code+get_random_string(4).upper()
+        template = render_to_string("base/email_reset.html",{"lang":lang,"link":link})
+        if lang == "en":
+            send_mail(
+                'Changing mail 🤨',
+                template,
+                'info@peoplesjoint.com',
+                [user.email],
+                fail_silently=False,
+            )
+        else:
+            send_mail(
+                'Mail değiştirme 🤨',
+                template,
+                'info@peoplesjoint.com',
+                [user.email],
+                fail_silently=False,
+            )
+        if lang=="tr":
+            return Response({"msg":"Email başarıyla gönderildi. 😄"},status=200)
+        else:
+            return Response({"msg":"Successfully sent mail. 😄"},status=200)
 
+    else:
+        if lang=="tr":
+            return Response ({"msg":"Kullanıcı bulunamadı. 😒"},status=400)
+        else:
+            return Response ({"msg":"User not found. 😒"},status=400)
+
+@api_view(['POST'])
+def ChangeMail(request,code):
+    lang = request.data.get('lang')
+    mail = request.data.get('new-mail')
+    mail1 = request.data.get('new-mail-1')
+    try:
+        jwt_code = jwt.dencode(code,key="alow31%4!")
+        from django.template.loader import render_to_string
+        link = "http://localhost:3000/change-email/"+jwt_code+get_random_string(4).upper()
+        template = render_to_string("base/confirm_email_change.html",{"lang":lang,"link":link})
+        if mail1 == mail:
+            if lang == "tr":
+                send_mail(
+                    'Email doğrulama 🌝',
+                    template,
+                    'info@peoplesjoint.com',
+                    [mail],
+                    fail_silently=False,
+                )
+            else:
+                send_mail(
+                    'Email confirmation 🌝',
+                    template,
+                    'info@peoplesjoint.com',
+                    [mail],
+                    fail_silently=False,
+                )
+            if lang=="tr":
+                return Response({"msg":"Doğrulama maili başarıyla gönderildi. 😄"},status=200)
+            else:
+                return Response({"msg":"Conformation mail sent. 😄"},status=200)
+        else:
+            if lang=="tr":
+                return Response({"msg":"Girdiğiniz mailler aynı değil. 🤨"},status=400)
+            else:
+                return Response({"msg":"The mails you entered dont match. 🤨"},status=400)
+    except:
+        if lang=="tr":
+            return Response ({"msg":"Kullanıcı bulunamadı. 😒"},status=400)
+        else:
+            return Response ({"msg":"User not found. 😒"},status=400)
+
+       
+
+def get_random_string(length):
+    import string
+    import random
+    # choose from all lowercase letter
+    letters = string.ascii_lowercase
+    result_str = ''.join(random.choice(letters) for i in range(length))
+    return result_str
     
     
     

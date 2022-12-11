@@ -33,6 +33,8 @@ urlpatterns = [
     path('change-password', views.ChangePassword),
     path('reset-password-email', views.ResetPasswordMail),
     path('reset-password/<str:code>', views.ResetPassword),
+    path('change-email-send', views.ChangeMailSendMail),
+    path('change-email/<str:code>', views.ChangeMail),
 
 
     
