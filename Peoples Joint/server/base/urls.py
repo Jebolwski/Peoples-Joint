@@ -35,6 +35,7 @@ urlpatterns = [
     path('reset-password/<str:code>', views.ResetPassword),
     path('change-email-send', views.ChangeMailSendMail),
     path('change-email/<str:code>', views.ChangeMail),
+    path('confirm-email/<str:code>', views.ConfirmMail),
 
 
     

@@ -45,7 +45,6 @@ def Routes(request):
 #TODO Register a user
 @api_view(['POST'])
 def Register(request):
-    print(request.data)
     if request.data.get('username') is None:
         return Response({"msg":"Username is not provided 😅"},status=400)
     
@@ -158,7 +157,6 @@ def GetProfile(request,pk):
 
 @api_view(['PUT'])
 def EditProfile(request,pk):
-    print(request.data)
     profile = Profile.objects.get(id=pk)
     if profile==None:
         return Response({"msg":"User not found 😢"},status=404)
@@ -172,7 +170,6 @@ def EditProfile(request,pk):
     if request.data.get("profilePic")!=None:
         profile.profilePic = request.data.get("profilePic")
     profile.save()
-    print(profile.profilePic,profile.description)
     serializer=ProfileSerializer(profile,many=False)
     if request.data.get("language")=="tr":
         return Response({"msg":serializer.data,"success_msg":"Profiliniz başarıyla düzenlendi. 🌝"},status=200)
@@ -189,12 +186,10 @@ def GetAllInterests(request):
 def FollowSomebody(request):
     profile = Profile.objects.get(id=request.data.get("id"))
     if profile:
-        print(Profile.objects.get(id=request.data.get("profile")) in profile.followers.all())
         if Profile.objects.get(id=request.data.get("profile")) in profile.followers.all():
             profile.followers.remove(request.data.get("profile"))
         else:
             profile.followers.add(request.data.get("profile"))
-        print(profile.followers.all())
 
         return Response({"msg":"Successfully followed profile"},status=200)
     else:
@@ -203,7 +198,6 @@ def FollowSomebody(request):
 @api_view(['POST'])
 def ChangePassword(request):
     u = Profile.objects.get(id=request.data.get("id")).user
-    print(request.data)
     auth = authenticate(username=u.username, password=request.data.get("old_password"))
     if auth==None:
         if request.data.get("language")=="tr":
@@ -341,15 +335,22 @@ def ChangeMailSendMail(request):
 
 @api_view(['POST'])
 def ChangeMail(request,code):
-    lang = request.data.get('lang')
-    mail = request.data.get('new-mail')
-    mail1 = request.data.get('new-mail-1')
+    lang = request.data.get('language')
+    mail = request.data.get('email')
+    mail1 = request.data.get('email1')
+    id = request.data.get('id')
     try:
-        jwt_code = jwt.dencode(code,key="alow31%4!")
         from django.template.loader import render_to_string
-        link = "http://localhost:3000/change-email/"+jwt_code+get_random_string(4).upper()
-        template = render_to_string("base/confirm_email_change.html",{"lang":lang,"link":link})
+        if len(User.objects.filter(id=id))==0:
+            if lang=="tr":
+                return Response({"msg":"Kullanıcı bulunamadı. 😥"},status=200)
+            else:
+                return Response({"msg":"Couldnt find user. 😥"},status=200)
+        user=User.objects.get(id=id)
+        jwt_code = jwt.encode(payload={'user_id':user.id,'email':mail,'exp':datetime.now(timezone.utc)+timedelta(minutes=5)},key='alow31%4!')
         if mail1 == mail:
+            link = "http://localhost:3000/confirm-email/"+jwt_code+str(get_random_string(4).upper())
+            template = render_to_string("base/confirm_email_change.html",{"lang":lang,"link":link})
             if lang == "tr":
                 send_mail(
                     'Email doğrulama 🌝',
@@ -366,6 +367,7 @@ def ChangeMail(request,code):
                     [mail],
                     fail_silently=False,
                 )
+            
             if lang=="tr":
                 return Response({"msg":"Doğrulama maili başarıyla gönderildi. 😄"},status=200)
             else:
@@ -375,13 +377,28 @@ def ChangeMail(request,code):
                 return Response({"msg":"Girdiğiniz mailler aynı değil. 🤨"},status=400)
             else:
                 return Response({"msg":"The mails you entered dont match. 🤨"},status=400)
-    except:
+    except Exception as e:
         if lang=="tr":
-            return Response ({"msg":"Kullanıcı bulunamadı. 😒"},status=400)
+            return Response ({"msg":"Şu anda mail değiştirilemiyor. 😒"},status=400)
         else:
-            return Response ({"msg":"User not found. 😒"},status=400)
+            return Response ({"msg":"Cant change mail right now. 😒"},status=400)
 
-       
+@api_view(['POST'])
+def ConfirmMail(request,code):
+    lang = request.data.get('language')
+    code = code[:len(code)-4]
+    try:
+        jwt_code = jwt.decode(code,key="alow31%4!",algorithms=['HS256'],options={"verify_signature": True})
+        user = User.objects.get(id=jwt_code.get("user_id"))
+        user.email=jwt_code.get("email")
+        user.save()
+        return Response({"msg":ProfileSerializer(Profile.objects.get(user=user)).data},status=200)
+    except Exception as e:
+        if lang=="tr":
+            return Response ({"msg":"Şu anda mail değiştirilemiyor. 😒"},status=400)
+        else:
+            return Response ({"msg":"Cant change mail right now. 😒"},status=400)
+
 
 def get_random_string(length):
     import string
