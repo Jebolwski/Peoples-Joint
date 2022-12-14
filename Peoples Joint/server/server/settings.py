@@ -2,6 +2,8 @@
 from datetime import timedelta
 from pathlib import Path
 import os
+####
+# Backward compatible
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -11,8 +13,6 @@ SECRET_KEY = 'django-insecure-u4@mj((npt2s9b*as^gw#3ejp)r8(-8&r1i3(4x869+!gl&_j3
 DEBUG = True
 
 ALLOWED_HOSTS = []
-
-
 
 INSTALLED_APPS = [
     'django.contrib.admin',

@@ -12,8 +12,22 @@ from rest_framework import generics
 from django.contrib.auth import authenticate
 from django.core.mail import send_mail
 import jwt
-from datetime import datetime,timezone,timedelta
+import tensorflow as tf
+from tensorflow.keras.applications.resnet50 import preprocess_input, decode_predictions
+from tensorflow.keras.preprocessing import image
+# Helper libraries
+import numpy as np
+import matplotlib.pyplot as pl
 
+import numpy as np
+from django.conf import settings
+from django.core.files.storage import default_storage
+from django.shortcuts import render
+from keras.applications import vgg16
+from keras.applications.imagenet_utils import decode_predictions
+from keras.utils.image_utils import img_to_array,load_img
+from tensorflow.python.keras.backend import set_session
+from datetime import datetime,timezone,timedelta
 
 class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
     @classmethod
@@ -102,7 +116,38 @@ def CreateBlog(request):
         description=request.data.get('description'),
         file=request.data.get('file'),
     )
-    serializer=BlogSerializer(blog,many=False)
+    try:
+        img_path="."+(blog.file.url)
+        print(img_path)
+        img = image.load_img(img_path, target_size=(224, 224))
+        img_array = image.img_to_array(img)
+        img_batch = np.expand_dims(img_array, axis=0)
+        img_preprocessed = preprocess_input(img_batch)
+        model = tf.keras.applications.resnet50.ResNet50()
+        prediction = model.predict(img_preprocessed)
+        print(decode_predictions(prediction, top=3)[0])
+
+        # file_url = default_storage.path("./"+blog.file.url[6:])
+        # print(0)
+        # image = load_img(file_url, target_size=(224, 224))
+        # print(1,image)
+        # numpy_array = img_to_array(image)
+        # print(2)
+        # image_batch = np.expand_dims(numpy_array, axis=0)
+        # print(3)
+        # processed_image = vgg16.preprocess_input(image_batch.copy())
+        # print(4)
+        # with settings.GRAPH1.as_default():
+        #     print(5)
+        #     set_session(settings.SESS)
+        #     print(6)
+        #     predictions = settings.IMAGE_MODEL.predict(processed_image)
+        # print(7)
+        # label = decode_predictions(predictions, top=10)
+        # print(label)
+    except Exception as e:
+        print(e)
+        serializer=BlogSerializer(blog,many=False)
     return Response({"msg":serializer.data,"success_msg":"Successfully created blog 🚀"},status=200)
 
 #!EDIT A BLOG BY ID
