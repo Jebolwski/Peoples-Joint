@@ -13,13 +13,8 @@ from django.contrib.auth import authenticate
 from django.core.mail import send_mail
 import jwt
 import tensorflow as tf
-from tensorflow.keras.applications.resnet50 import preprocess_input, decode_predictions
-from tensorflow.keras.preprocessing import image
-# Helper libraries
-import numpy as np
-import matplotlib.pyplot as pl
-
-import numpy as np
+from django.db.models import Q
+import difflib
 from django.conf import settings
 from django.core.files.storage import default_storage
 from django.shortcuts import render
@@ -110,44 +105,36 @@ def GetAllBlogs(request):
 #!CREATE A BLOG
 @api_view(['POST'])
 def CreateBlog(request):
+    profile=Profile.objects.get(id=request.data.get('profile'))
+
     blog = Blog.objects.create(
-        profile=Profile.objects.get(id=request.data.get('profile')),
+        profile=profile,
         title=request.data.get('title'),
         description=request.data.get('description'),
         file=request.data.get('file'),
     )
-    try:
-        img_path="."+(blog.file.url)
-        print(img_path)
-        img = image.load_img(img_path, target_size=(224, 224))
-        img_array = image.img_to_array(img)
-        img_batch = np.expand_dims(img_array, axis=0)
-        img_preprocessed = preprocess_input(img_batch)
-        model = tf.keras.applications.resnet50.ResNet50()
-        prediction = model.predict(img_preprocessed)
-        print(decode_predictions(prediction, top=3)[0])
 
-        # file_url = default_storage.path("./"+blog.file.url[6:])
-        # print(0)
-        # image = load_img(file_url, target_size=(224, 224))
-        # print(1,image)
-        # numpy_array = img_to_array(image)
-        # print(2)
-        # image_batch = np.expand_dims(numpy_array, axis=0)
-        # print(3)
-        # processed_image = vgg16.preprocess_input(image_batch.copy())
-        # print(4)
-        # with settings.GRAPH1.as_default():
-        #     print(5)
-        #     set_session(settings.SESS)
-        #     print(6)
-        #     predictions = settings.IMAGE_MODEL.predict(processed_image)
-        # print(7)
-        # label = decode_predictions(predictions, top=10)
-        # print(label)
-    except Exception as e:
-        print(e)
-        serializer=BlogSerializer(blog,many=False)
+    #?Description interests
+    desc = request.data.get('description')
+    desc = desc.replace('.','')
+    desc = desc.replace(',','')
+    desc = desc.split(' ')
+    for i in desc:
+        for j in Interest.objects.filter(Q(tr_name__startswith=i[0]) | Q(en_name__endswith=i[0])):
+            if difflib.SequenceMatcher(None,j.tr_name.lower(),i.lower()).ratio()>=0.6 or difflib.SequenceMatcher(None,j.en_name.lower(),i.lower()).ratio()>=0.6:
+                profile.interests.add(j.id)
+
+    #?Title interests
+    title = request.data.get('title')
+    title = title.replace('.','')
+    title = title.replace(',','')
+    title = title.split(' ')
+    for i in title:
+        for j in Interest.objects.filter(Q(tr_name__startswith=i[0]) | Q(en_name__endswith=i[0])):
+            if difflib.SequenceMatcher(None,j.tr_name.lower(),i.lower()).ratio()>=0.6 or difflib.SequenceMatcher(None,j.en_name.lower(),i.lower()).ratio()>=0.6:
+                profile.interests.add(j.id)
+    
+    serializer=BlogSerializer(blog,many=False)
     return Response({"msg":serializer.data,"success_msg":"Successfully created blog 🚀"},status=200)
 
 #!EDIT A BLOG BY ID
@@ -164,6 +151,30 @@ def EditBlog(request,pk):
     if request.data.get("removeFile"):
         fake_data['file']=None
     serializer=BlogSerializer(blog,data=fake_data)
+    #?Description interests
+    if request.data.get('description'):
+        desc = request.data.get('description')
+        desc = desc.replace('.','')
+        desc = desc.replace(',','')
+        desc = desc.split(' ')
+        for i in desc:
+            for j in Interest.objects.filter(Q(tr_name__startswith=i[0]) | Q(en_name__endswith=i[0])):
+                if difflib.SequenceMatcher(None,j.tr_name.lower(),i.lower()).ratio()>=0.6 or difflib.SequenceMatcher(None,j.en_name.lower(),i.lower()).ratio()>=0.6:
+                    blog.profile.interests.add(j.id)
+
+    #?Title interests
+    if request.data.get('title'):
+        title = request.data.get('title')
+        title = title.replace('.','')
+        title = title.replace(',','')
+        title = title.split(' ')
+        for i in title:
+            for j in Interest.objects.filter(Q(tr_name__startswith=i[0]) | Q(en_name__endswith=i[0])):
+                if difflib.SequenceMatcher(None,j.tr_name.lower(),i.lower()).ratio()>=0.6 or difflib.SequenceMatcher(None,j.en_name.lower(),i.lower()).ratio()>=0.6:
+                    blog.profile.interests.add(j.id)
+
+    
+    
     if serializer.is_valid():
         serializer.save()
         if request.data.get("language")=="tr":
@@ -229,12 +240,20 @@ def GetAllInterests(request):
 
 @api_view(['POST'])
 def FollowSomebody(request):
-    profile = Profile.objects.get(id=request.data.get("id"))
-    if profile:
-        if Profile.objects.get(id=request.data.get("profile")) in profile.followers.all():
-            profile.followers.remove(request.data.get("profile"))
+    followed_profile = Profile.objects.get(id=request.data.get("will_be_followed_id"))
+    following_profile = Profile.objects.get(id=request.data.get("will_be_following_id"))
+    
+    if followed_profile and following_profile:
+        if Profile.objects.get(id=request.data.get("will_be_following_id")) in followed_profile.followers.all():
+            followed_profile.followers.remove(request.data.get("will_be_following_id"))
+            #following_profile.following.remove(request.data.get("will_be_followed_id"))
+            
         else:
-            profile.followers.add(request.data.get("profile"))
+            followed_profile.followers.add(request.data.get("will_be_following_id"))
+            #following_profile.following.add(request.data.get("will_be_followed_id"))
+        print("Takip eden kişinin takip ettikleri",following_profile.following.all(),"Takip edenin takipçileri",following_profile.followers.all())
+        print("Takip edileceğin takipçileri",followed_profile.followers.all(),"Takip edileceğin takip ettikleri",followed_profile.following.all())
+
 
         return Response({"msg":"Successfully followed profile"},status=200)
     else:

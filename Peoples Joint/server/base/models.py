@@ -20,11 +20,12 @@ interest_choices =(
 )
 
 class Interest(models.Model):
-    name=models.CharField(max_length=100,null=False,blank=False)
+    tr_name=models.CharField(max_length=100,null=False,blank=False)
+    en_name=models.CharField(max_length=100,null=False,blank=False)
     created = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return self.name
+        return self.tr_name + " ------ " + self.en_name
 
 class Profile(models.Model):
     user = models.ForeignKey(User,on_delete=models.CASCADE,null=False,blank=False)
