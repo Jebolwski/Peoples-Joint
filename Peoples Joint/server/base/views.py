@@ -240,19 +240,19 @@ def GetAllInterests(request):
 
 @api_view(['POST'])
 def FollowSomebody(request):
-    followed_profile = Profile.objects.get(id=request.data.get("will_be_followed_id"))
-    following_profile = Profile.objects.get(id=request.data.get("will_be_following_id"))
-    
-    if followed_profile and following_profile:
-        if Profile.objects.get(id=request.data.get("will_be_following_id")) in followed_profile.followers.all():
-            followed_profile.followers.remove(request.data.get("will_be_following_id"))
-            #following_profile.following.remove(request.data.get("will_be_followed_id"))
-            
+    takip_edilcek = Profile.objects.get(id=request.data.get("takip_edilcek"))
+    takip_edecek = Profile.objects.get(id=request.data.get("takip_edecek"))
+    print(takip_edilcek)
+    print(takip_edecek)
+    if takip_edilcek and takip_edecek:
+        if takip_edecek not in takip_edilcek.followers.all():
+            takip_edilcek.followers.add(takip_edecek.id)
+            takip_edecek.following.add(takip_edilcek.id)
         else:
-            followed_profile.followers.add(request.data.get("will_be_following_id"))
-            #following_profile.following.add(request.data.get("will_be_followed_id"))
-        print("Takip eden kişinin takip ettikleri",following_profile.following.all(),"Takip edenin takipçileri",following_profile.followers.all())
-        print("Takip edileceğin takipçileri",followed_profile.followers.all(),"Takip edileceğin takip ettikleri",followed_profile.following.all())
+            takip_edilcek.followers.remove(takip_edecek.id)
+            takip_edecek.following.remove(takip_edilcek.id)
+        print("Takip edenin takipçileri",takip_edecek.followers.all(),"--------------------","Takip eden kişinin takip ettikleri",takip_edecek.following.all())
+        print("Takip edileceğin takipçileri",takip_edilcek.followers.all(),"--------------------","Takip edileceğin takip ettikleri",takip_edilcek.following.all())
 
 
         return Response({"msg":"Successfully followed profile"},status=200)
