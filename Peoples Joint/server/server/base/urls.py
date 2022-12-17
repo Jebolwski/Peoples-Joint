@@ -20,7 +20,6 @@ urlpatterns = [
     path('blogs/add', views.CreateBlog),
     path('blogs/<int:pk>/edit', views.EditBlog),
     path('blogs/<int:pk>/<str:lang>/delete', views.DeleteBlog),
-    path('blogs/<int:pk>/like', views.LikeBlog),
 
     #?PROFILEs
     path('profile/<int:pk>', views.GetProfile),
@@ -38,8 +37,6 @@ urlpatterns = [
     path('change-email/<str:code>', views.ChangeMail),
     path('confirm-email/<str:code>', views.ConfirmMail),
 
-    #?ANALYZE 
-    path('reccomend-friend/<int:pk>', views.ReccomendFriend),
-    
+
     
 ]+static(settings.MEDIA_URL,document_root=settings.MEDIA_ROOT)

@@ -114,35 +114,25 @@ def CreateBlog(request):
         file=request.data.get('file'),
     )
 
+    #?Description interests
+    desc = request.data.get('description')
+    desc = desc.replace('.','')
+    desc = desc.replace(',','')
+    desc = desc.split(' ')
+    for i in desc:
+        for j in Interest.objects.filter(Q(tr_name__startswith=i[0]) | Q(en_name__endswith=i[0])):
+            if difflib.SequenceMatcher(None,j.tr_name.lower(),i.lower()).ratio()>=0.6 or difflib.SequenceMatcher(None,j.en_name.lower(),i.lower()).ratio()>=0.6:
+                profile.interests.add(j.id)
+
     #?Title interests
     title = request.data.get('title')
     title = title.replace('.','')
     title = title.replace(',','')
     title = title.split(' ')
     for i in title:
-        i=i.lower()
-        print("------------")
-        print(i)
-        print("------------")
         for j in Interest.objects.filter(Q(tr_name__startswith=i[0]) | Q(en_name__endswith=i[0])):
             if difflib.SequenceMatcher(None,j.tr_name.lower(),i.lower()).ratio()>=0.6 or difflib.SequenceMatcher(None,j.en_name.lower(),i.lower()).ratio()>=0.6:
                 profile.interests.add(j.id)
-    
-
-    #?Description interests
-    desc = request.data.get('description')
-    desc = desc.strip()
-    desc = desc.replace('.','')
-    desc = desc.replace(',','')
-    desc = desc.split(' ')
-    for i in desc:
-        print(i)
-        i=i.lower()
-        print("------------")
-        for j in Interest.objects.filter(Q(tr_name__startswith=i[0]) | Q(en_name__endswith=i[0])):
-            if difflib.SequenceMatcher(None,j.tr_name.lower(),i.lower()).ratio()>=0.6 or difflib.SequenceMatcher(None,j.en_name.lower(),i.lower()).ratio()>=0.6:
-                profile.interests.add(j.id)
-
     
     serializer=BlogSerializer(blog,many=False)
     return Response({"msg":serializer.data,"success_msg":"Successfully created blog 🚀"},status=200)
@@ -250,30 +240,24 @@ def GetAllInterests(request):
 
 @api_view(['POST'])
 def FollowSomebody(request):
-    will_be_followed = Profile.objects.filter(user=User.objects.get(id=request.data.get('will_be_followed')))
-    will_follow = Profile.objects.filter(user=User.objects.get(id=request.data.get('will_follow')))
-    lang = request.data.get('language')
-    if len(will_be_followed)==1 and len(will_follow)==1:
-        will_be_followed = Profile.objects.get(user=User.objects.get(id=request.data.get('will_be_followed')))
-        will_follow = Profile.objects.get(user=User.objects.get(id=request.data.get('will_follow')))
-
-        if will_follow.user not in will_be_followed.followers.all():
-            will_be_followed.followers.add(will_follow.user.id)
-            will_follow.following.add(will_be_followed.user.id)
-            if lang=="tr":
-                return Response({"msg":"Başarıyla takip edildi. 🚀"},status=200)
-            return Response({"msg":"Successfully followed profile. 🚀"},status=200)
+    takip_edilcek = Profile.objects.get(id=request.data.get("takip_edilcek"))
+    takip_edecek = Profile.objects.get(id=request.data.get("takip_edecek"))
+    print(takip_edilcek)
+    print(takip_edecek)
+    if takip_edilcek and takip_edecek:
+        if takip_edecek not in takip_edilcek.followers.all():
+            takip_edilcek.followers.add(takip_edecek.id)
+            takip_edecek.following.add(takip_edilcek.id)
         else:
-            will_be_followed.followers.remove(will_follow.user.id)
-            will_follow.following.remove(will_be_followed.user.id)
-            if lang=="tr":
-                return Response({"msg":"Başarıyla takipten çıkıldı. 🚀"},status=200)
-            return Response({"msg":"Successfully unfollowed profile. 🚀"},status=200)
-        
+            takip_edilcek.followers.remove(takip_edecek.id)
+            takip_edecek.following.remove(takip_edilcek.id)
+        print("Takip edenin takipçileri",takip_edecek.followers.all(),"--------------------","Takip eden kişinin takip ettikleri",takip_edecek.following.all())
+        print("Takip edileceğin takipçileri",takip_edilcek.followers.all(),"--------------------","Takip edileceğin takip ettikleri",takip_edilcek.following.all())
+
+
+        return Response({"msg":"Successfully followed profile"},status=200)
     else:
-        if lang=="tr":
-            return Response({"msg":"Profil bulunamadı. 😒"},status=404)
-        return Response({"msg":"Couldnt find the profile. 😒"},status=404)
+        return Response({"msg":"Couldnt find the profile"},status=404)
 
 @api_view(['POST'])
 def ChangePassword(request):
@@ -479,6 +463,7 @@ def ConfirmMail(request,code):
         else:
             return Response ({"msg":"Cant change mail right now. 😒"},status=400)
 
+
 def get_random_string(length):
     import string
     import random
@@ -487,53 +472,5 @@ def get_random_string(length):
     result_str = ''.join(random.choice(letters) for i in range(length))
     return result_str
     
-@api_view(['POST'])
-def LikeBlog(request,pk):
-    lang = request.data.get("language")
-    blog = Blog.objects.get(id=pk)
-    profile = Profile.objects.filter(id=request.data.get("profile_id"))
-    #TODO Kullanıcıyı kontrol etme
-    if len(profile)==0:
-        if lang == "en":
-            return Response ({"msg":"Profile not found. 😶"},status=400)
-        return Response ({"msg":"Kullanıcı bulunamadı. 😶"},status=400)
-    profile = profile[0]
-    #TODO Blogu beğenme
-    if profile not in blog.likes.all():
-        blog.likes.add(profile.id)
-        if lang == "en":
-            return Response ({"msg":"You liked the blog. 🌝","blog_data":BlogSerializer(blog).data},status=200)
-        return Response ({"msg":"Blogu beğendiniz. 🌝","blog_data":BlogSerializer(blog).data},status=200)
-    #TODO Blogu beğenmeyi geri çekme
-    blog.likes.remove(profile.id)
-    if lang == "en":
-        return Response ({"msg":"You took your like back. 🤨","blog_data":BlogSerializer(blog).data},status=200)
-    return Response ({"msg":"Beğeninizi geri çektiniz. 🤨","blog_data":BlogSerializer(blog).data},status=200)
-
-def AnalyzeFollowings(pk):
-    profile = Profile.objects.get(id=pk)
-    array=[]
-    count=0
-    for i in profile.following.all():
-        count=0
-        for j in Blog.objects.filter(profile=Profile.objects.get(id=i.id)):
-            if profile in j.likes.all():
-                count+=1
-        array.append([i.username,count,i.id])
-    array.sort(key = lambda x: x[1],reverse=True)
-    return array
-
-@api_view(['GET'])
-def ReccomendFriend(request,pk):
-    array = AnalyzeFollowings(pk)
-    if len(array)<3:
-        for i in range(len(array)):
-            profile = Profile.objects.get(user=User.objects.get(id=array[i][2]))
-            print(profile,profile.following.all())
-    else:
-        for i in range(3):
-            profile = Profile.objects.get(user=User.objects.get(id=array[i][2]))
-            print(profile,profile.following.all())
-
-        
-    return Response("messi")
+    
+    

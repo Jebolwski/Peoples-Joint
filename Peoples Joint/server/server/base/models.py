@@ -31,8 +31,8 @@ class Profile(models.Model):
     user = models.ForeignKey(User,on_delete=models.CASCADE,null=False,blank=False)
     profilePic = models.ImageField(null=True,blank=True,upload_to="profilePic")
     description = models.CharField(max_length=160,null=False,blank=True,default="No description was given.")
-    followers = models.ManyToManyField(User,related_name='takipciler',default=None,blank=True)
-    following = models.ManyToManyField(User,related_name='takip_edilenler',default=None,blank=True)
+    followers = models.ManyToManyField("self",related_name='takipciler',default=None,blank=True)
+    following = models.ManyToManyField("self",related_name='takip_edilenler',default=None,blank=True)
     interests = models.ManyToManyField(Interest,related_name='interests',blank=True)
     created = models.DateTimeField(auto_now_add=True)
     updated = models.DateTimeField(auto_now=True)
@@ -52,7 +52,6 @@ class Blog(models.Model):
     title = models.CharField(max_length=100,null=False,blank=False)
     description = models.CharField(null=False,blank=False,max_length=240)
     file = models.FileField(null=True,blank=True,upload_to="blog_file")
-    likes = models.ManyToManyField(Profile,default=None,blank=True,related_name="likes")
     created = models.DateTimeField(auto_now_add=True)
     updated = models.DateTimeField(auto_now=True)
 
