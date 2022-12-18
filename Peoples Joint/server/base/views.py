@@ -121,9 +121,6 @@ def CreateBlog(request):
     title = title.split(' ')
     for i in title:
         i=i.lower()
-        print("------------")
-        print(i)
-        print("------------")
         for j in Interest.objects.filter(Q(tr_name__startswith=i[0]) | Q(en_name__endswith=i[0])):
             if difflib.SequenceMatcher(None,j.tr_name.lower(),i.lower()).ratio()>=0.6 or difflib.SequenceMatcher(None,j.en_name.lower(),i.lower()).ratio()>=0.6:
                 profile.interests.add(j.id)
@@ -136,9 +133,7 @@ def CreateBlog(request):
     desc = desc.replace(',','')
     desc = desc.split(' ')
     for i in desc:
-        print(i)
         i=i.lower()
-        print("------------")
         for j in Interest.objects.filter(Q(tr_name__startswith=i[0]) | Q(en_name__endswith=i[0])):
             if difflib.SequenceMatcher(None,j.tr_name.lower(),i.lower()).ratio()>=0.6 or difflib.SequenceMatcher(None,j.en_name.lower(),i.lower()).ratio()>=0.6:
                 profile.interests.add(j.id)
@@ -516,7 +511,7 @@ def AnalyzeFollowings(pk):
     count=0
     for i in profile.following.all():
         count=0
-        for j in Blog.objects.filter(profile=Profile.objects.get(id=i.id)):
+        for j in Blog.objects.filter(profile=Profile.objects.get(user=i)):
             if profile in j.likes.all():
                 count+=1
         array.append([i.username,count,i.id])
@@ -526,14 +521,14 @@ def AnalyzeFollowings(pk):
 @api_view(['GET'])
 def ReccomendFriend(request,pk):
     array = AnalyzeFollowings(pk)
-    if len(array)<3:
-        for i in range(len(array)):
-            profile = Profile.objects.get(user=User.objects.get(id=array[i][2]))
-            print(profile,profile.following.all())
-    else:
-        for i in range(3):
-            profile = Profile.objects.get(user=User.objects.get(id=array[i][2]))
-            print(profile,profile.following.all())
-
+    people=[]
+    import random
+    for i in range(len(array)):
+        profile = Profile.objects.get(user=User.objects.get(id=array[i][2]))
+        if len(profile.following.all())>0:
+            length = len(profile.following.all())
+            random_int = random.randint(0,length-1)
+            if profile.following.all()[random_int] not in people:
+                people.append(ProfileSerializer(Profile.objects.get(user=profile.following.all()[random_int])).data)
         
-    return Response("messi")
+    return Response({"msg":"Reccomended friends.","data":people},status=200)
